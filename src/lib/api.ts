@@ -300,12 +300,32 @@ export async function updateBillboard(id: string, updates: any): Promise<{ error
  * Delete a billboard
  */
 export async function deleteBillboard(id: string): Promise<{ error: Error | null }> {
-  const { error } = await supabase
-    .from("billboards")
-    .delete()
-    .eq("id", id);
+  try {
+    // Try via database RPC (trusted middleman bypassing RLS restrictions)
+    const { error: rpcError } = await (supabase.rpc as any)('delete_billboard_fully', {
+      board_id: id,
+    });
 
-  return { error };
+    if (!rpcError) {
+      return { error: null };
+    }
+
+    // Fallback: client-side deletion of child records and billboard
+    await supabase.from("bookings").delete().eq("billboard_id", id);
+    await supabase.from("booking_requests").delete().eq("billboard_id", id);
+    await supabase.from("billboard_availability").delete().eq("billboard_id", id);
+    await supabase.from("billboard_images").delete().eq("billboard_id", id);
+    await supabase.from("saved_billboards").delete().eq("billboard_id", id);
+
+    const { error } = await supabase
+      .from("billboards")
+      .delete()
+      .eq("id", id);
+
+    return { error };
+  } catch (err: any) {
+    return { error: err };
+  }
 }
 
 /**

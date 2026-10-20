@@ -61,13 +61,20 @@ export function BillboardDetailPage() {
       if (user && !isOwner) {
         const { data: reqData } = await supabase
           .from("booking_requests")
-          .select("status")
+          .select("id, status")
           .eq("billboard_id", billboardId)
           .eq("advertiser_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1);
-        if (reqData && reqData.length > 0) {
-          setExistingRequest(reqData[0]);
+        if (reqData && reqData.length > 0 && reqData[0]) {
+          const req = reqData[0] as { id: string; status: string };
+          const localStatus = localStorage.getItem(`request_status_${req.id}`);
+          const effectiveStatus = localStatus || req.status;
+          if (effectiveStatus === "pending" || effectiveStatus === "accepted") {
+            setExistingRequest({ id: req.id, status: effectiveStatus });
+          } else {
+            setExistingRequest(null);
+          }
         } else {
           setExistingRequest(null);
         }
@@ -237,7 +244,9 @@ export function BillboardDetailPage() {
             <p className="mt-4 text-xs text-muted-foreground">
               {isOwner
                 ? "Switch to an advertiser account to browse and request billboards."
-                : "Booking requests open up once you sign in — browsing stays free and open."}
+                : !user
+                ? "Booking requests open up once you sign in — browsing stays free and open."
+                : null}
             </p>
           </div>
 
@@ -260,6 +269,16 @@ export function BillboardDetailPage() {
                   }
                   if (!startDate || !endDate) {
                     toast.error("Please select both start and end dates.");
+                    return;
+                  }
+
+                  const todayStr = new Date().toISOString().split("T")[0] || "";
+                  if (startDate < todayStr) {
+                    toast.error("Start date cannot be in the past.");
+                    return;
+                  }
+                  if (endDate < startDate) {
+                    toast.error("End date cannot be earlier than start date.");
                     return;
                   }
 
@@ -320,6 +339,7 @@ export function BillboardDetailPage() {
                       id="startDate"
                       type="date"
                       required
+                      min={new Date().toISOString().split("T")[0]}
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                     />
@@ -330,6 +350,7 @@ export function BillboardDetailPage() {
                       id="endDate"
                       type="date"
                       required
+                      min={startDate || new Date().toISOString().split("T")[0]}
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                     />

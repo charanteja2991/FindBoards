@@ -23,7 +23,15 @@ export function SiteHeader() {
       return;
     }
     const fetchCount = async () => {
+      if (!user) {
+        setRequestCount(0);
+        return;
+      }
       if (isOwner) {
+        if (location.pathname === "/owner/requests") {
+          setRequestCount(0);
+          return;
+        }
         const { count } = await supabase
           .from("booking_requests")
           .select("*", { count: "exact", head: true })
@@ -31,13 +39,33 @@ export function SiteHeader() {
           .eq("status", "pending");
         setRequestCount(count || 0);
       } else {
-        // For advertiser: dot appears when owner responds (accepted or declined), not when pending
-        const { count } = await supabase
+        if (location.pathname === "/advertiser/requests") {
+          setRequestCount(0);
+          localStorage.setItem(`advertiser_requests_viewed_at_${user.id}`, new Date().toISOString());
+          return;
+        }
+
+        const viewedAt = localStorage.getItem(`advertiser_requests_viewed_at_${user.id}`);
+        const { data, error } = await supabase
           .from("booking_requests")
-          .select("*", { count: "exact", head: true })
+          .select("id, status, responded_at, updated_at")
           .eq("advertiser_id", user.id)
           .in("status", ["accepted", "declined"]);
-        setRequestCount(count || 0);
+
+        if (error || !data) {
+          setRequestCount(0);
+        } else {
+          const viewedTime = viewedAt ? new Date(viewedAt).getTime() : 0;
+          const unviewedCount = data.filter((req: any) => {
+            const respTime = req.responded_at
+              ? new Date(req.responded_at).getTime()
+              : req.updated_at
+              ? new Date(req.updated_at).getTime()
+              : 0;
+            return respTime > viewedTime;
+          }).length;
+          setRequestCount(unviewedCount);
+        }
       }
     };
     fetchCount();

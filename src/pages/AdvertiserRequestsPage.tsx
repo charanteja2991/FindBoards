@@ -69,12 +69,15 @@ export function AdvertiserRequestsPage() {
     try {
       const { error } = await (supabase.from("booking_requests") as any)
         .update({
-          status: "cancelled",
+          status: "declined",
+          responded_at: new Date().toISOString(),
           owner_response: "Cancelled by advertiser",
         })
-        .eq("id", requestId);
+        .eq("id", requestId)
+        .eq("advertiser_id", user!.id);
 
       if (error) throw error;
+
       toast.success("Booking request cancelled.");
       loadRequests(user!.id);
     } catch (err: any) {
@@ -113,7 +116,7 @@ export function AdvertiserRequestsPage() {
           {/* Filters & Search */}
           <div className="mt-8 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
             <div className="flex flex-wrap gap-2">
-              {["all", "pending", "accepted", "declined", "cancelled", "superseded"].map((status) => (
+              {["all", "pending", "accepted", "declined", "superseded"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
@@ -212,13 +215,13 @@ export function AdvertiserRequestsPage() {
                             <div className="flex items-center gap-3">
                               <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
                                 req.status === "accepted" ? "bg-emerald-500/10 text-emerald-600" :
-                                isDeclinedOrCancelled ? "bg-destructive/10 text-destructive" :
+                                req.status === "declined" || req.status === "cancelled" ? "bg-destructive/10 text-destructive" :
                                 req.status === "superseded" ? "bg-amber-500/10 text-amber-600" :
                                 "bg-brand/10 text-brand"
                               }`}>
                                 {req.status === "accepted" ? "Confirmed / Accepted" :
-                                 req.status === "declined" ? "Declined by Owner" :
-                                 req.status === "cancelled" ? "Cancelled" :
+                                 req.status === "declined" ? "Declined" :
+                                 req.status === "cancelled" ? "Cancelled by Advertiser" :
                                  req.status === "superseded" ? "No Longer Available" :
                                  "Pending Review"}
                               </span>

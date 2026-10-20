@@ -155,6 +155,11 @@ CREATE POLICY "Owners can update booking requests for own billboards"
   ON booking_requests FOR UPDATE
   USING (auth.uid() = owner_id);
 
+CREATE POLICY "Advertisers can update own booking requests"
+  ON booking_requests FOR UPDATE
+  USING (auth.uid() = advertiser_id)
+  WITH CHECK (auth.uid() = advertiser_id);
+
 -- Bookings policies
 CREATE POLICY "Advertisers can view own bookings"
   ON bookings FOR SELECT
@@ -171,6 +176,22 @@ CREATE POLICY "Owners can create bookings for own billboards"
 CREATE POLICY "Owners can update bookings for own billboards"
   ON bookings FOR UPDATE
   USING (auth.uid() = owner_id);
+
+CREATE POLICY "Owners can delete bookings for own billboards"
+  ON bookings FOR DELETE
+  USING (auth.uid() = owner_id);
+
+CREATE POLICY "Owners can delete booking requests for own billboards"
+  ON booking_requests FOR DELETE
+  USING (auth.uid() = owner_id);
+
+CREATE POLICY "Owners can delete availability for own billboards"
+  ON billboard_availability FOR DELETE
+  USING (EXISTS (SELECT 1 FROM billboards WHERE billboards.id = billboard_availability.billboard_id AND billboards.owner_id = auth.uid()));
+
+CREATE POLICY "Owners can delete images for own billboards"
+  ON billboard_images FOR DELETE
+  USING (EXISTS (SELECT 1 FROM billboards WHERE billboards.id = billboard_images.billboard_id AND billboards.owner_id = auth.uid()));
 
 -- Notifications policies
 CREATE POLICY "Users can view own notifications"

@@ -52,10 +52,10 @@ export function OwnerRequestsPage() {
           )
         `)
         .eq("owner_id", ownerId)
-        .neq("status", "cancelled")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+
       setRequests(data || []);
     } catch (err: any) {
       toast.error("Failed to load booking requests: " + err.message);
@@ -157,7 +157,7 @@ export function OwnerRequestsPage() {
           {/* Filters & Search */}
           <div className="mt-8 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
             <div className="flex flex-wrap gap-2">
-              {["all", "pending", "accepted", "declined", "superseded"].map((status) => (
+              {["all", "pending", "accepted", "declined", "cancelled", "superseded"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
@@ -232,7 +232,7 @@ export function OwnerRequestsPage() {
                         {/* Status Tinted Image */}
                         <div className={`relative size-28 shrink-0 overflow-hidden rounded-xl ${
                           req.status === "accepted" ? "bg-emerald-500" :
-                          req.status === "declined" ? "bg-red-500" :
+                          req.status === "declined" || req.status === "cancelled" ? "bg-red-500" :
                           "bg-black"
                         }`}>
                           {cover ? (
@@ -249,17 +249,20 @@ export function OwnerRequestsPage() {
                             </div>
                           )}
                           {req.status === "accepted" && <div className="absolute inset-0 bg-emerald-500/20 pointer-events-none" />}
-                          {req.status === "declined" && <div className="absolute inset-0 bg-red-500/20 pointer-events-none" />}
+                          {(req.status === "declined" || req.status === "cancelled") && <div className="absolute inset-0 bg-red-500/20 pointer-events-none" />}
                         </div>
 
                         <div className="space-y-3 flex-1">
                           <div className="flex items-center gap-3">
                             <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${
                               req.status === "accepted" ? "bg-emerald-500/10 text-emerald-600" :
-                              req.status === "declined" ? "bg-destructive/10 text-destructive" :
+                              req.status === "declined" || req.status === "cancelled" ? "bg-destructive/10 text-destructive" :
                               "bg-amber-500/10 text-amber-600"
                             }`}>
-                              {req.status}
+                              {req.status === "accepted" ? "Accepted" :
+                               req.status === "declined" ? "Declined" :
+                               req.status === "cancelled" ? "Advertiser Cancelled" :
+                               req.status}
                             </span>
                             <span className="text-xs text-muted-foreground">Requested on {new Date(req.created_at).toLocaleDateString()}</span>
                           </div>
